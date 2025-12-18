@@ -1,0 +1,260 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <fstream>
+
+// ===================== CLASE LIBRO =====================
+class Libro {
+private:
+    std::string titulo;
+    std::string autor;
+    std::string isbn;
+    bool disponible;
+
+public:
+    Libro(const std::string& t, const std::string& a, const std::string& i)
+        : titulo(t), autor(a), isbn(i), disponible(true) {}
+
+    std::string getTitulo() const { return titulo; }
+    std::string getAutor() const { return autor; }
+    std::string getIsbn() const { return isbn; }
+    bool estaDisponible() const { return disponible; }
+
+    void setDisponible(bool estado) { disponible = estado; }
+
+    void mostrarInformacion() const {
+        std::cout << "ISBN: " << isbn
+                  << " | Titulo: " << titulo
+                  << " | Autor: " << autor
+                  << " | Estado: "
+                  << (disponible ? "Disponible" : "Prestado")
+                  << std::endl;
+    }
+};
+
+// ===================== CLASE SOCIO =====================
+class Socio {
+private:
+    std::string nombre;
+    int idSocio;
+    std::vector<std::string> librosPrestados;
+
+public:
+    Socio(const std::string& n, int id) : nombre(n), idSocio(id) {}
+
+    std::string getNombre() const { return nombre; }
+    int getIdSocio() const { return idSocio; }
+
+    void tomarLibro(const std::string& isbn) {
+        librosPrestados.push_back(isbn);
+    }
+
+    void devolverLibro(const std::string& isbn) {
+        auto it = std::find(librosPrestados.begin(), librosPrestados.end(), isbn);
+        if (it != librosPrestados.end()) {
+            librosPrestados.erase(it);
+        }
+    }
+
+    void mostrarInformacion() const {
+        std::cout << "ID: " << idSocio
+                  << " | Nombre: " << nombre
+                  << " | Libros: ";
+        if (librosPrestados.empty()) {
+            std::cout << "Ninguno";
+        } else {
+            for (const auto& isbn : librosPrestados)
+                std::cout << isbn << " ";
+        }
+        std::cout << std::endl;
+    }
+};
+
+// ===================== CLASE BIBLIOTECA =====================
+class Biblioteca {
+private:
+    std::string nombre;
+    std::vector<Libro> catalogo;
+    std::vector<Socio> socios;
+
+    Libro* buscarLibro(const std::string& isbn) {
+        for (auto& l : catalogo)
+            if (l.getIsbn() == isbn) return &l;
+        return nullptr;
+    }
+
+    Socio* buscarSocio(int id) {
+        for (auto& s : socios)
+            if (s.getIdSocio() == id) return &s;
+        return nullptr;
+    }
+
+public:
+    Biblioteca(const std::string& n) : nombre(n) {
+        std::cout << "Bienvenido a " << nombre << std::endl;
+    }
+
+    bool agregarLibro(const std::string& t, const std::string& a, const std::string& i) {
+        catalogo.emplace_back(t, a, i);
+        return true;
+    }
+
+    bool registrarSocio(const std::string& n, int id) {
+        socios.emplace_back(n, id);
+        return true;
+    }
+
+    bool prestarLibro(const std::string& isbn, int id) {
+        Libro* libro = buscarLibro(isbn);
+        Socio* socio = buscarSocio(id);
+
+        if (!libro || !socio || !libro->estaDisponible())
+            return false;
+
+        libro->setDisponible(false);
+        socio->tomarLibro(isbn);
+        return true;
+    }
+
+    bool devolverLibro(const std::string& isbn, int id) {
+        Libro* libro = buscarLibro(isbn);
+        Socio* socio = buscarSocio(id);
+
+        if (!libro || !socio)
+            return false;
+
+        libro->setDisponible(true);
+        socio->devolverLibro(isbn);
+        return true;
+    }
+
+    void mostrarCatalogo() const {
+        std::cout << "\n--- CATALOGO ---\n";
+        for (const auto& l : catalogo)
+            l.mostrarInformacion();
+    }
+
+    void mostrarSocios() const {
+        std::cout << "\n--- SOCIOS ---\n";
+        for (const auto& s : socios)
+            s.mostrarInformacion();
+    }
+};
+
+// ===================== FUNCIONES DE JUEGO =====================
+void mostrarMenu(int puntos) {
+    std::cout << "\n╔════════════════════════════════╗\n";
+    std::cout << "║   🎮 DESAFÍO DEL BIBLIOTECARIO  ║\n";
+    std::cout << "╠════════════════════════════════╣\n";
+    std::cout << "║ 1. Agregar libro               ║\n";
+    std::cout << "║ 2. Registrar socio             ║\n";
+    std::cout << "║ 3. Prestar libro               ║\n";
+    std::cout << "║ 4. Devolver libro              ║\n";
+    std::cout << "║ 5. Ver catálogo                ║\n";
+    std::cout << "║ 6. Ver socios                  ║\n";
+    std::cout << "║ 0. Salir                       ║\n";
+    std::cout << "╠════════════════════════════════╣\n";
+    std::cout << "║ Puntos: " << puntos << "\n";
+    std::cout << "╚════════════════════════════════╝\n";
+    std::cout << "Opción: ";
+}
+
+int cargarPuntos() {
+    int p = 0;
+    std::ifstream f("puntos.txt");
+    if (f) f >> p;
+    return p;
+}
+
+void guardarPuntos(int p) {
+    std::ofstream f("puntos.txt");
+    f << p;
+}
+
+// ===================== MAIN =====================
+int main() {
+    Biblioteca biblioteca("Biblioteca Municipal");
+    int puntos = cargarPuntos();
+    int opcion;
+
+    do {
+        mostrarMenu(puntos);
+        std::cin >> opcion;
+
+        if (std::cin.fail()) {
+            std::cin.clear();
+            std::cin.ignore(1000, '\n');
+            std::cout << "Entrada inválida (-5 puntos)\n";
+            puntos -= 5;
+            continue;
+        }
+
+        std::cin.ignore();
+
+        if (opcion == 1) {
+            std::string t, a, i;
+            std::cout << "Titulo: ";
+            std::getline(std::cin, t);
+            std::cout << "Autor: ";
+            std::getline(std::cin, a);
+            std::cout << "ISBN: ";
+            std::getline(std::cin, i);
+            biblioteca.agregarLibro(t, a, i);
+            puntos += 5;
+        }
+        else if (opcion == 2) {
+            std::string n;
+            int id;
+            std::cout << "Nombre: ";
+            std::getline(std::cin, n);
+            std::cout << "ID: ";
+            std::cin >> id;
+            biblioteca.registrarSocio(n, id);
+            puntos += 5;
+        }
+        else if (opcion == 3) {
+            std::string i;
+            int id;
+            std::cout << "ISBN: ";
+            std::getline(std::cin >> std::ws, i);
+            std::cout << "ID socio: ";
+            std::cin >> id;
+
+            if (biblioteca.prestarLibro(i, id)) {
+                std::cout << "Prestamo exitoso (+10)\n";
+                puntos += 10;
+            } else {
+                std::cout << "Error en prestamo (-5)\n";
+                puntos -= 5;
+            }
+        }
+        else if (opcion == 4) {
+            std::string i;
+            int id;
+            std::cout << "ISBN: ";
+            std::getline(std::cin >> std::ws, i);
+            std::cout << "ID socio: ";
+            std::cin >> id;
+
+            if (biblioteca.devolverLibro(i, id)) {
+                std::cout << "Devolución correcta (+5)\n";
+                puntos += 5;
+            } else {
+                std::cout << "Error en devolución (-5)\n";
+                puntos -= 5;
+            }
+        }
+        else if (opcion == 5) biblioteca.mostrarCatalogo();
+        else if (opcion == 6) biblioteca.mostrarSocios();
+        else if (opcion != 0) {
+            std::cout << "Opción inválida (-5)\n";
+            puntos -= 5;
+        }
+
+    } while (opcion != 0);
+
+    guardarPuntos(puntos);
+    std::cout << "\nJuego terminado. Puntos finales: " << puntos << std::endl;
+    return 0;
+}
